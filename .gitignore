@@ -1,0 +1,16 @@
+# Node / frontend
+node_modules/
+dist/
+
+# Python / backend
+__pycache__/
+*.pyc
+
+# Entornos y configs
+.env
+
+# Bases de datos locales
+*.db
+
+# Otros
+.DS_Store

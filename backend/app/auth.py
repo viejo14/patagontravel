@@ -1,16 +1,27 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, Form, Header
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime, timedelta
-
 from . import models, database
 from .jwt_utils import SECRET_KEY, ALGORITHM  # evitar import circular
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# ========================
+# Modelos Pydantic
+# ========================
+
+class TokenResponse(BaseModel):
+    access_token: str
+    refresh_token: str | None
+    role: str
+    username: str
+    token_type: str
 
 # ========================
 # Utilidades
@@ -69,7 +80,7 @@ def register(username: str = Form(...), password: str = Form(...), db: Session =
     db.refresh(new_user)
     return {"message": f"Usuario {username} registrado correctamente"}
 
-@router.post("/login")
+@router.post("/login", response_model=TokenResponse)
 def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.username == username).first()
     if not user or not verify_password(password, user.hashed_password):
@@ -79,6 +90,8 @@ def login(username: str = Form(...), password: str = Form(...), db: Session = De
     return {
         "access_token": access_token,
         "refresh_token": None,  # No necesitamos refresh
+        "role": "user",
+        "username": user.username,
         "token_type": "bearer"
     }
 
@@ -91,7 +104,7 @@ def read_users_me(authorization: str = Header(...), db: Session = Depends(get_db
         raise HTTPException(status_code=401, detail="Token inválido")
 
     if payload.get("role") == "guest":
-        return {"username": "Invitado", "role": "guest"}
+        return {"username": payload.get("sub"), "role": "guest"}
 
     user = db.query(models.User).filter(models.User.username == payload.get("sub")).first()
     if not user:
@@ -102,13 +115,25 @@ def read_users_me(authorization: str = Header(...), db: Session = Depends(get_db
 def upload_file(user=Depends(require_non_guest)):
     return {"message": "Archivo subido con éxito", "usuario": user.get("sub")}
 
-@router.post("/guest")
-def guest_login():
-    guest_data = {"sub": "guest_user", "role": "guest"}
-    access_token = create_long_lived_token(guest_data)
+@router.post("/guest", response_model=TokenResponse)
+def guest_login(db: Session = Depends(get_db)):
+    # Generar username único
+    guest_id = str(uuid.uuid4())[:8]
+    guest_username = f"Invitado-{guest_id}"
+
+    # Crear usuario en DB con rol guest
+    guest_user = models.User(username=guest_username, role="guest")
+    db.add(guest_user)
+    db.commit()
+    db.refresh(guest_user)
+
+    # Crear token
+    access_token = create_long_lived_token({"sub": guest_username, "role": "guest"})
+
     return {
         "access_token": access_token,
-        "refresh_token": None,  # No necesitamos refresh
+        "refresh_token": None,
         "role": "guest",
+        "username": guest_username,
         "token_type": "bearer"
     }
