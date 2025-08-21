@@ -1,0 +1,60 @@
+@access_token =
+@refresh_token =
+
+### Login usuario
+POST http://127.0.0.1:8000/auth/login
+Content-Type: application/x-www-form-urlencoded
+
+username=francisco&password=123456
+
+> {%
+    let body = JSON.parse(response.body);
+    client.global.set("access_token", body.access_token);
+    client.global.set("refresh_token", body.refresh_token);
+%}
+
+###
+
+### Obtener usuario actual
+GET http://127.0.0.1:8000/auth/me
+Authorization: Bearer {{access_token}}
+
+###
+
+### Subida de archivo (solo no invitados)
+POST http://127.0.0.1:8000/auth/upload
+Authorization: Bearer {{access_token}}
+
+###
+
+### Login invitado
+POST http://127.0.0.1:8000/auth/guest
+
+> {%
+    let body = JSON.parse(response.body);
+    client.global.set("access_token", body.access_token);
+    client.global.set("refresh_token", body.refresh_token);
+%}
+
+###
+
+### Refresh token
+POST http://127.0.0.1:8000/auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "{{refresh_token}}"
+}
+
+> {%
+    let body = JSON.parse(response.body);
+    client.global.set("access_token", body.access_token);
+%}
+
+###
+
+### Registrar usuario
+POST http://127.0.0.1:8000/auth/register
+Content-Type: application/x-www-form-urlencoded
+
+username=nuevo_usuario&password=123456
