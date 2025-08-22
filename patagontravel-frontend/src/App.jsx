@@ -1,5 +1,6 @@
 // Importamos React y hooks para manejar estado y efectos
 import React, { useState, useEffect } from "react";
+import Register from "./Register";
 
 // Axios para hacer peticiones HTTP al backend
 import axios from "axios";
@@ -54,6 +55,12 @@ export default function App() {
     setUser(null);
   };
 
+  // 🔹 Nuevo: función para manejar el registro exitoso
+  const onRegistered = async (token) => {
+    saveToken(token);
+    await fetchMe(token);
+  };
+
   // Efecto que se ejecuta al montar la app
   // Intenta recuperar sesión previa, si no hay, entra como invitado
   useEffect(() => {
@@ -80,7 +87,19 @@ export default function App() {
         <Route
           path="/"
           element={
-            <Login login={login} guestLogin={guestLogin} user={user} />
+            <Login
+              login={login}
+              guestLogin={guestLogin}
+              user={user}
+            />
+          }
+        />
+
+        {/* Ruta del registro */}
+        <Route
+          path="/register"
+          element={
+            <Register onRegistered={onRegistered} />
           }
         />
 

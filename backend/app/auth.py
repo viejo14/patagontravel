@@ -68,17 +68,40 @@ def get_db():
 # Endpoints
 # ========================
 
-@router.post("/register")
-def register(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+@router.post("/register", response_model=TokenResponse)
+def register(
+    username: str = Form(...),
+    password: str = Form(...),
+    db: Session = Depends(get_db)
+):
+    # normalizar nombre de usuario
+    username = username.strip().lower()
+
+    # evitar duplicados
     if db.query(models.User).filter(models.User.username == username).first():
         raise HTTPException(status_code=400, detail="El usuario ya existe")
 
     hashed_password = hash_password(password)
-    new_user = models.User(username=username, hashed_password=hashed_password)
+    new_user = models.User(
+        username=username,
+        hashed_password=hashed_password,
+        role="user"
+    )
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": f"Usuario {username} registrado correctamente"}
+
+    # token inmediato tras registro
+    access_token = create_long_lived_token({"sub": new_user.username, "role": new_user.role})
+
+    return {
+        "access_token": access_token,
+        "refresh_token": None,
+        "role": new_user.role,
+        "username": new_user.username,
+        "token_type": "bearer"
+    }
+
 
 @router.post("/login", response_model=TokenResponse)
 def login(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
