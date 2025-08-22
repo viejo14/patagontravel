@@ -1,8 +1,10 @@
 ﻿from fastapi import FastAPI, Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from . import auth, models, database
 from fastapi.middleware.cors import CORSMiddleware
+
+# Importamos módulos internos
+from . import auth, models, database, users  # 👈 aquí agregamos "users"
 
 # 🔧 Inicialización de la app
 app = FastAPI(title="PatagonTravel API", version="0.0.1")
@@ -12,6 +14,9 @@ models.Base.metadata.create_all(bind=database.engine)
 
 # 📦 Incluir rutas del módulo auth (todas las rutas que empiezan con /auth)
 app.include_router(auth.router)
+
+# 📦 Incluir rutas del módulo users (ej: /users/registered)
+app.include_router(users.router_users)  # 👈 integración del nuevo router
 
 # 🩺 Ruta de verificación básica
 @app.get("/health")

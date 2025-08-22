@@ -1,16 +1,16 @@
 // Importamos React y hooks para manejar estado y efectos
 import React, { useState, useEffect } from "react";
 import Register from "./Register";
+import Login from "./Login";
+import Home from "./Home";
+import UserList from "./components/UserList"; // Listado de usuarios
+import ForgotPassword from "./ForgotPassword";// 📌 NUEVO: Pantalla para solicitar recuperación
 
 // Axios para hacer peticiones HTTP al backend
 import axios from "axios";
 
 // Componentes de React Router para manejo de rutas
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
-// Componentes que renderizamos según la ruta
-import Login from "./Login";
-import Home from "./Home";
 
 // Leemos la URL de la API desde variables de entorno (Vite)
 const API_URL = import.meta.env.VITE_API_URL;
@@ -38,8 +38,8 @@ export default function App() {
       `${API_URL}/auth/login`,
       new URLSearchParams({ username, password })
     );
-    saveToken(res.data.access_token);        // Guardamos el token
-    await fetchMe(res.data.access_token);    // Obtenemos datos del usuario
+    saveToken(res.data.access_token);
+    await fetchMe(res.data.access_token);
   };
 
   // Login como invitado (sin credenciales)
@@ -55,35 +55,34 @@ export default function App() {
     setUser(null);
   };
 
-  // 🔹 Nuevo: función para manejar el registro exitoso
+  // 📌 Función para manejar el registro exitoso
   const onRegistered = async (token) => {
     saveToken(token);
     await fetchMe(token);
   };
 
-  // Efecto que se ejecuta al montar la app
-  // Intenta recuperar sesión previa, si no hay, entra como invitado
+  // Intenta recuperar sesión previa o hace login invitado
   useEffect(() => {
     const init = async () => {
       const token = localStorage.getItem("access_token");
       if (token) {
         try {
-          await fetchMe(token); // Token válido → obtenemos datos
+          await fetchMe(token);
         } catch {
-          await guestLogin();   // Token inválido → login invitado
+          await guestLogin();
         }
       } else {
-        await guestLogin();     // Sin token → login invitado
+        await guestLogin();
       }
     };
     init();
   }, []);
 
-  // Router principal: define qué componente mostrar según la URL
+  // Router principal
   return (
     <Router>
       <Routes>
-        {/* Ruta del login */}
+        {/* Login */}
         <Route
           path="/"
           element={
@@ -95,18 +94,33 @@ export default function App() {
           }
         />
 
-        {/* Ruta del registro */}
+        {/* Registro */}
         <Route
           path="/register"
-          element={
-            <Register onRegistered={onRegistered} />
-          }
+          element={<Register onRegistered={onRegistered} />}
         />
 
-        {/* Ruta del home → ahora recibe onLogout para cerrar sesión */}
+        {/* 📌 NUEVA RUTA: Recuperar contraseña */}
+        <Route
+          path="/forgot-password"
+          element={<ForgotPassword />}
+        />
+
+        {/* Home con botón de logout */}
         <Route
           path="/home"
           element={<Home user={user} onLogout={logout} />}
+        />
+
+        {/* Panel de usuarios */}
+        <Route
+          path="/users"
+          element={
+            <div>
+              <h1>Panel de Usuarios</h1>
+              <UserList /> {/* Listado en tabla */}
+            </div>
+          }
         />
       </Routes>
     </Router>
